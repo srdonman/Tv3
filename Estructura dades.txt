@@ -1,0 +1,179 @@
+-- RESULTAT DEL PROCÉS DE CONSOLIDACIÓ
+ 
+CREATE EXTERNAL TABLE ccma_matr.hbbtv_ip_audiencia_cons
+(
+  -- DADES BASE CONSOLIDACIÓ
+  st_usuari_id                      string  COMMENT 'usuari_id                                     ' 
+ ,st_player_id                      string  COMMENT 'player_id                                     '
+ ,max_sn                            string  COMMENT 'sn: màx dins agrupament en generar-se reprod. '
+ ,n_sn                              string  COMMENT 'número de sn diferents  en generar-se reprod. '
+ ,max_an                            boolean COMMENT 'an: màx dins agrupament en generar-se reprod. '
+ ,st_agrupador_live                 string  COMMENT 'Agrupador per live                            '
+ ,st_agrupador_contingut_id         string  COMMENT 'Agrupador per contingut_id                    '
+ ,st_agrupador_arafem_start_time    string  COMMENT 'Agrupador per arafem_start_time               '
+ ,st_agrupador_canal_nom            string  COMMENT 'Agrupador per canal_nom                       '
+ ,st_agrupador_REPRODUCCIO          string  COMMENT 'Agrupador TOTAL                               '
+ ,bo_es_diferit                     boolean COMMENT 'live = diferit                                '
+ ,bo_canal_sense_arafem             boolean COMMENT 'canal_nom = BondiaTV / Càmeres                '
+ ,bo_en_reproduccio                 boolean COMMENT 'indica si si alguna marca està en reproducció '
+ 
+  -- DADES RESUM REPRODUCCIÓ       
+ ,min_data                          string  COMMENT 'mín. data-hora                                                                                 '
+ ,max_data                          string  COMMENT 'màx. data-hora                                                                                 '
+ ,min_data_timestamp                bigint  COMMENT '                                                                                               '
+ ,max_data_timestamp                bigint  COMMENT '                                                                                               '
+ ,min_counter                       int     COMMENT 'PixMark   :: debug    -> parser         Ex1: 65                                                '
+ ,max_counter                       int     COMMENT 'PixMark   :: debug    -> parser         Ex1: 65                                                '
+ ,min_time_code                     int     COMMENT 'PixMark   :: tc                         Ex1: 0                                                 '
+ ,max_time_code                     int     COMMENT 'PixMark   :: tc                         Ex1: 0                                                 '
+ ,min_id_raw                        bigint  COMMENT 'mín id (raw)                                                                                   '
+ ,max_id_raw                        bigint  COMMENT 'màx id (raw)                                                                                   '
+ ,min_id_bloc                       bigint  COMMENT 'mínim id_bloc on hem processat la marca per primer cop                                         '
+ ,max_id_bloc                       bigint  COMMENT 'màxim id_bloc on hem processat la marca per últim cop                                          '
+ ,id_bloc_consolidacio              bigint  COMMENT 'id_bloc on hem consolidat la marca                                                             '
+ ,bi_segons_consum                  bigint  COMMENT 'segons de consum: unix_timestamp(max_data) - unix_timestamp(min_data)                          '
+ ,bi_marques                        bigint  COMMENT 'nombre de marques                                                                              '
+ ,n_blocs                           bigint  COMMENT 'nombre de blocs entre el primer processat (ha quedat pendent) i l últim (el de consolidació)   '
+ ,de_55_consum                      decimal COMMENT 'bi_segons_consum / 55 :: ràtio que hauria d aproximar-se molt al nombre de marques (bi_marques)'
+ ,de_ratio_consum_marques           decimal COMMENT 'bi_segons_consum / bi_marques :: segons promig entre marques, hauria d aproximar-se a 55       '
+
+ ,SUMA_DIFERENCIES                  int     COMMENT 'Acumulat de valors diferents pels camps verificats                                             '
+ ,COLUMNES_AMB_DIFERENCIES          int     COMMENT 'Nombre de columnes (camps) amb alguna diferencia                                               '
+ ,RESUM_DIFERENCIES_AMB_VALORS      string  COMMENT 'Encadenat de camps amb alguna diferencia i els seus valors diferents                           '
+ 
+  -- DADES DE CÀRREGA              
+ ,bi_id_setting                     bigint  COMMENT 'Identificador del Setting                                                                      '
+ 
+  -- DADES DETALL AUDIÈNCIA
+ ,usuari_id                         string  COMMENT 'usuari_id                                                                                                                 ' -- 001
+ ,player_id                         string  COMMENT 'PixMark   :: plid                       Ex1: "305541560260701643"                                                         ' -- 002
+ ,live                              string  COMMENT 'PixMark   :: live                       Ex1: "directe"                                                                    ' -- 003 --> st_agrupador_live
+ ,difftime                          int     COMMENT 'PixMark   :: debug    -> parser         Ex1: -47,620                                                                      ' -- 011
+ ,sn                                string  COMMENT 'sn                                                                                                                        ' -- 012
+ ,an                                boolean COMMENT 'PixMark   :: an                         Ex1: false                                                                        ' -- 013
+ ,ui                                string  COMMENT 'PixMark   :: ui                         Ex3: "MzQ1MTg4NDIz"                                                               ' -- 014
+ ,ri                                string  COMMENT 'PixMark   :: ri                         Ex3: "ccma"                                                                       ' -- 015
+ ,versio_app                        string  COMMENT 'PixMark   :: av                         Exn: "n.nnnn.nn"                                                                  ' -- 018
+ ,versio_player                     string  COMMENT 'PixMark   :: pv                         Exn: "n.nnnn.nn"                                                                  ' -- 019
+ ,casting                           boolean COMMENT 'PixMark   :: cast                       Ex1: false                                                                        ' -- 020
+ ,font                              string  COMMENT 'PixMark   :: pid                        Ex1: "TDT"                                                                        ' -- 021
+ ,media_tipus                       string  COMMENT 'PixMark   :: type                       Ex1: "video"                                                                      ' -- 022
+ ,producte_id                       string  COMMENT 'PixMark   :: pid                        Ex1: "HbbTV_TDT"                                                                  ' -- 023
+ ,format                            string  COMMENT 'PixMark   :: format                     Ex4: "m3u8"                                                                       ' -- 024
+ ,qualitat                          string  COMMENT 'PixMark   :: qualitat                   Ex4: "auto" / "HD"                                                                ' -- 025
+ ,contingut_id                      string  COMMENT 'PixMark   :: cid                        Ex5: "2785730"                                                                    ' -- 026 --> st_agrupador_contingut_id
+ ,contingut_variant                 string  COMMENT 'PixMark   :: cvar                       Ex1: "cat"                                                                        ' -- 027
+ ,reproduccio_id                    string  COMMENT 'PixMark   :: cid+uid+plid               Ex1: "1ec172cc6da9f65a6918e81fdcdea023a5da9f103e1e8d45002d56b3a506810d"           ' -- 028
+ ,sbt                               boolean COMMENT 'PixMark   :: sbt                        Ex1: false                                                                        ' -- 029
+ ,sbtd                              string  COMMENT 'PixMark   :: sbtd                       Exn: "xxxxx"                                                                      ' -- 030
+ ,debug                             string  COMMENT 'PixMark   :: debug                      Ex2: "{ "type": "Error - AraFem", "message": "Canal no identificat", "request...  ' -- 031
+ ,debug_message                     string  COMMENT 'PixMark   :: debug    -> parser         Ex2: "Canal no identificat"                                                       ' -- 032
+ ,debug_request                     string  COMMENT 'PixMark   :: debug    -> parser         Ex2: "Mark [uid=49eefaa0-645f-11e9-a5f7-858264ad48af, ses=, pid=HbbTV_TDT,..."    ' -- 033
+ ,debug_type                        string  COMMENT 'PixMark   :: debug    -> parser         Ex2: "Error - AraFem"                                                             ' -- 034
+ ,debug_data                        string  COMMENT 'Storm     :: date                       Ex2: "June 12th 2019, 09:47:25.000"                                               ' -- 035
+ ,ref                               string  COMMENT 'PixMark   :: ref                        Ex1: "http://apptv.ccma.cat/iptv/hbbtv/current/tv3/index.cehtml"                  ' -- 036
+ ,loc                               string  COMMENT 'PixMark   :: loc                        Ex1: "http://apptv.ccma.cat/iptv/hbbtv/launcher/index.dist.cehtml?canal=tv3#hook" ' -- 037
+ ,ip                                string  COMMENT 'Collector :: IP                         Exn: "nnn.nnn.nnn.nnn"                                                            ' -- 038
+ ,geoip_ciutat                      string  COMMENT 'Collector :: IP       -> getGeoZone     Exn: "xxxxx"                                                                      ' -- 039
+ ,geoip_codi_postal                 string  COMMENT 'Collector :: IP       -> getGeoZone     Exn: "nnnnn"                                                                      ' -- 040
+ ,geoip_coordenades_x               double  COMMENT 'Collector :: IP       -> getGeoZone     Exn: "nnnnn"                                                                      ' -- 041
+ ,geoip_coordenades_y               double  COMMENT 'Collector :: IP       -> getGeoZone     Exn: "nnnnn"                                                                      ' -- 042
+ ,geoip_pais                        string  COMMENT 'Collector :: IP       -> getGeoZone     Exn: "xxxxx"                                                                      ' -- 043
+ ,geoip_regio                       string  COMMENT 'Collector :: IP       -> getGeoZone     Exn: "xxxxx"                                                                      ' -- 044
+ ,provincia_id                      string  COMMENT 'PixMark   :: cid      -> decod XML      Ex1: "6"                                                                          ' -- 045
+ ,provincia_nom                     string  COMMENT 'PixMark   :: cid      -> decod XML      Ex1: "Barcelona"                                                                  ' -- 046
+ ,canal_codi                        string  COMMENT 'PixMark   :: cid      -> decod XML      Ex1: "8916.101.808" (HbbTV_TDT) / "TV3" (altres prod.)                            ' -- 047
+ ,canal_codi_norma                  string  COMMENT 'PixMark   :: cid      -> decod XML      Ex1: "05183" (HbbTV_TDT) /                                                        ' -- 048
+ ,canal_nom                         string  COMMENT 'PixMark   :: cid      -> decod XML      Ex1: "Esport3" (HbbTV_TDT) /                                                      ' -- 049 --> st_agrupador_canal_nom
+ ,programa_id                       string  COMMENT 'PixMark   :: cid      -> media.jsp      Ex1: "6012425"                                                                    ' -- 050
+ ,durada                            string  COMMENT 'PixMark   :: cid      -> media.jsp      Ex1: "03:09:53"                                                                   ' -- 051
+ ,programa_nom                      string  COMMENT 'PixMark   :: cid      -> media.jsp      Ex1: "Tot es mou"                                                                 ' -- 052
+ ,programa_capitol                  string  COMMENT 'PixMark   :: cid      -> media.jsp      Ex1: "301"                                                                        ' -- 053
+ ,media_titol                       string  COMMENT 'PixMark   :: cid      -> media.jsp      Ex1: "Tot es mou"                                                                 ' -- 054
+ ,tematica                          string  COMMENT 'PixMark   :: cid      -> media.jsp      Ex1: "ACTUALITAT"                                                                 ' -- 055
+ ,arafem_tipus                      string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "tv"                                                                         ' -- 056
+ ,arafem_codi_canal                 string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "tv3"                                                                        ' -- 057
+ ,arafem_codi_programa              string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "518056"                                                                     ' -- 058
+ ,arafem_titol_programa             string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "Tot es mou"                                                                 ' -- 059
+ ,arafem_capitol                    string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "301"                                                                        ' -- 060
+ ,arafem_titol_capitol              string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: ""                                                                           ' -- 061
+ ,arafem_codi_op                    string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "6012425"                                                                    ' -- 062
+ ,arafem_titol_tdt                  string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "Tot es mou"                                                                 ' -- 063
+ ,arafem_start_time                 string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "2019-06-11T15:55:00+02:00"                                                  ' -- 064 --> st_agrupador_arafem_start_time
+ ,arafem_end_time                   string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "2019-06-11T19:04:53+02:00"                                                  ' -- 065
+ ,arafem_durada                     string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "03:09:53"                                                                   ' -- 066
+ ,arafem_graella                    string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "7261884"                                                                    ' -- 067
+ ,arafem_subtitulat_catala          string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "yes"                                                                        ' -- 068
+ ,arafem_subtitulat_vo              string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "no"                                                                         ' -- 069
+ ,arafem_audio_descripcio           string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "no"                                                                         ' -- 070
+ ,arafem_classificacio_grup         string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "ACTUALITAT"                                                                 ' -- 071
+ ,arafem_classificacio_grup_id      string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "1"                                                                          ' -- 072
+ ,arafem_classificacio_subgrup      string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "MAGAZINE"                                                                   ' -- 073
+ ,arafem_classificacio_subgrup_id   string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "12"                                                                         ' -- 074
+ ,arafem_tematica                   string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "34"                                                                         ' -- 075
+ ,arafem_classificacio_tematica_dvb string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "34"                                                                         ' -- 076
+ ,arafem_target                     string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "TOTS ELS PÚBLICS"                                                           ' -- 077
+ ,arafem_target_id                  string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "4"                                                                          ' -- 078
+ ,arafem_codi_etic                  string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: ""                                                                           ' -- 079
+ ,arafem_drets_cat                  string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "yes"                                                                        ' -- 080
+ ,arafem_drets_esp                  string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "yes"                                                                        ' -- 081
+ ,arafem_drets_mon                  string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "yes"                                                                        ' -- 082
+ ,arafem_contribucio                string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "xxxxx"                                                                      ' -- 083
+ ,arafem_destacat                   string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "yes"                                                                        ' -- 084
+ ,arafem_destacat_imatge            string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "https://statics.ccma.cat/multimedia/jpg/3/1/1517406117913.jpg"              ' -- 085
+ ,arafem_logo                       string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "HD"                                                                         ' -- 086
+ ,arafem_reemissio                  string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "no"                                                                         ' -- 087
+ ,arafem_codi_hashtag               string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "HT120"                                                                      ' -- 088
+ ,arafem_hashtag                    string  COMMENT 'PixMark   :: cid+data -> AraFem         Ex1: "#TotEsMouTV3"                                                               ' -- 089
+ ,mrec_id                           string  COMMENT 'PixMark   :: mrecid                     Ex6: "-1918709166"                                                                ' -- 090
+ ,mrec_modul                        string  COMMENT 'PixMark   :: mrecm                      Ex6: "HTMLTWIG_MREC"                                                              ' -- 091
+ ,mrec_posicio                      int     COMMENT 'PixMark   :: mrecp                      Ex6: "2"                                                                          ' -- 092
+ ,mrec_default                      boolean COMMENT 'PixMark   :: mrecdf                     Ex6: false                                                                        ' -- 093
+ ,mrec_tipus_test                   string  COMMENT 'PixMark   :: mrect                      Ex6: "A"                                                                          ' -- 094
+ ,spm_id                            string  COMMENT 'PixMark   :: spm.listid                 Exn: "xxxxx"                                                                      ' -- 095
+ ,spm_tipus                         string  COMMENT 'PixMark   :: spm.listuid                Exn: "xxxxx"                                                                      ' -- 096
+ ,spm_modul                         string  COMMENT 'PixMark   :: spm.listm                  Exn: "xxxxx"                                                                      ' -- 097
+ ,spm_posicio                       int     COMMENT 'PixMark   :: spm.listp                  Exn: "xxxxx"                                                                      ' -- 098
+ 
+  -- DADES DE DISPOSITIU
+ ,dispositiu_dia                    timestamp COMMENT 'Dia de la peticio pixUser'
+ ,dispositiu_hora                   timestamp COMMENT 'Dia i hora, amb resolucio de minut, de la peticio pixUser'
+ ,dispositiu_ip                     string    COMMENT 'Adreca IP del dispositiu'
+ ,dispositiu_geo                    string    COMMENT 'Geo del dispositiu enviat pel pixUser'
+ ,dispositiu_profile_aplicacio      string    COMMENT 'Perfil html5, hbbtv standar, low...'
+ ,dispositiu_engine_versio          string    COMMENT 'Versio del engine del dispositiu'
+ ,dispositiu_accepta_cookies        string    COMMENT 'Variable booleana que indica si el dispositiu accepta cookies (T/F)'
+ ,dispositiu_software_versio        string    COMMENT 'Versio del software del dispositiu'
+ ,dispositiu_model                  string    COMMENT 'Model del dispositiu'
+ ,dispositiu_vendor                 string    COMMENT 'Nom de la marca del dispositiu'
+ ,dispositiu_norma                  string    COMMENT 'Norma del dispositiu'
+ ,dispositiu_cpu                    string    COMMENT 'CPU del dispositiu'
+ ,dispositiu_browser_versio         string    COMMENT 'Versio del browser del dispositiu'
+ ,dispositiu_browser_nom            string    COMMENT 'Nom del browser del dispositiu'
+ ,dispositiu_tipus                  string    COMMENT 'Tipus de dispositiu (PC, tablet, TV, movil, SmartTV)'
+ ,dispositiu_engine_nom             string    COMMENT 'Nom del engine del dispositiu'
+ ,dispositiu_hardware_versio        string    COMMENT 'Versio del hardware del dispositiu'
+ ,dispositiu_useragent              string    COMMENT 'User agent complert que arriba en la crida pixUser'
+ ,dispositiu_regio                  string    COMMENT 'Regio obtinguda de hbbtv_canals_sintonitzats mes hbbtv_canals_regio'
+
+  -- DADES INCORPORADES
+ ,adobe_id                          string    COMMENT 'PixMark   :: aid                        Ex1: "25295827282227548194465724228134513685                 ' -- [00.25.v02] + adobe_id       (amb ALTER TABLE)
+ ,dispositiu_relacio                string    COMMENT 'Tipus de relació establerta amb dispositiu: S: usuari_id+sn // U: usuari_id // -: disp no relacionat ' -- [00.25.v03] + dispositiu_relacio (amb ALTER TABLE)
+ ,mrec_h                            double    COMMENT 'PixMark   :: mrech                      Ex6: "12011"                                                 ' -- [00.25.v04] + mrec_h, mrec_y (amb ALTER TABLE)
+ ,mrec_y                            double    COMMENT 'PixMark   :: mrecy                      Ex6: "9898"                                                  ' -- [00.25.v04] + mrec_h, mrec_y (amb ALTER TABLE)
+ ,debug_pixuser                     string    COMMENT 'PixUSER   :: debug                                                                                   ' -- [00.25.v05] + debug_pixuser, debug_pixmark (amb ALTER TABLE)
+ ,debug_pixmark                     string    COMMENT 'PixMark   :: debug                                                                                   ' -- [00.25.v05] + debug_pixuser, debug_pixmark (amb ALTER TABLE)
+ ,bi_marques_uniques                bigint    COMMENT 'nombre de marques úniques: count(distinct counter)                                                   ' -- [00.25.v06] + bi_marques_uniques, bi_time_code_consum, bi_marques_55_consum
+ ,bi_time_code_consum               bigint    COMMENT 'segons de consum: max_time_code - min_time_code                                                      ' -- [00.25.v06] + bi_marques_uniques, bi_time_code_consum, bi_marques_55_consum
+ ,bi_marques_55_consum              bigint    COMMENT 'segons de consum: (bi_marques_uniques -1) * freq                                                     ' -- [00.25.v06] + bi_marques_uniques, bi_time_code_consum, bi_marques_55_consum
+ ,freq                              int       COMMENT 'PixMark   :: freq                       Ex1: 55                                                      ' -- [00.25.v07] + freq
+ ,in_n_freq_diferents               int       COMMENT 'PixMark   :: freq                       Ex1: 1                                                       ' -- [00.25.v07] + freq   
+)
+COMMENT 'AUDIÈNCIES CONSOLIDADES'
+PARTITIONED BY (in_p_any int,
+                st_p_dia string
+               )
+STORED AS PARQUET 
+LOCATION
+  'hdfs://NamenodeHA/enterprise/matr/hbbtv_ip_audiencia_cons'
+;
